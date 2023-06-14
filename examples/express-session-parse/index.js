@@ -1,9 +1,13 @@
+/* eslint-disable quotes */
+/* eslint-disable no-var */
+/* eslint-disable prettier/prettier */
 'use strict';
 
 const session = require('express-session');
 const express = require('express');
 const http = require('http');
 const uuid = require('uuid');
+const sql = require('mssql')
 
 const { WebSocketServer } = require('../..');
 
@@ -24,12 +28,35 @@ const sessionParser = session({
   resave: false
 });
 
+const sqlConfig = {
+  user: "ThuanTest1",
+  password: "123456",
+  database:"CaroApp",
+  server: 'localhost',
+  pool: {
+    max: 10,
+    min: 0,
+    idleTimeoutMillis: 30000
+  },
+  options: {
+    trustServerCertificate: true,
+  }
+}
 //
 // Serve static files from the 'public' folder.
 //
 app.use(express.static('public'));
 app.use(sessionParser);
-
+const connectDb = async () => {
+  try {
+      // make sure that any items are correctly URL encoded in the connection string
+       await sql.connect(sqlConfig)
+    } catch (err) {
+    console.log(err)
+      // ... error checks
+  }
+}
+connectDb()
 app.post('/login', function (req, res) {
   //
   // "Log in" user and set userId to session.
@@ -40,6 +67,13 @@ app.post('/login', function (req, res) {
   req.session.userId = id;
   res.send({ result: 'OK', message: 'Session updated' });
 });
+app.post('/signUp', function (req, res) {
+  try{
+      
+  }catch{
+
+  }
+})
 
 app.delete('/logout', function (request, response) {
   const ws = map.get(request.session.userId);
@@ -73,8 +107,7 @@ server.on('upgrade', function (request, socket, head) {
       socket.destroy();
       return;
     }
-
-    console.log('Session is parsed!');
+    // getRoomId via url
 
     socket.removeListener('error', onSocketError);
 
@@ -83,22 +116,72 @@ server.on('upgrade', function (request, socket, head) {
     });
   });
 });
-
+var id = 0;
+const allClients = [];
 wss.on('connection', function (ws, request) {
   const userId = request.session.userId;
+  console.log('userId', userId);
+  allClients.push({userId, ws, roomId: request.roomId});
+  // Check total clients in room if > 2 => return client.ws.send('room is full')
+  let totalClients = 0;
+  allClients.forEach((client) => {
+    if(client.roomId === request.roomId && client.userId !== userId){
+      totalClients++;
+    }
+  })
+  if(totalClients == 0){
+    ws.send(JSON.stringify({type: 'X', message: 'You are the first player' , status: 'waiting'}));
+  }else if (totalClients === 1){
+    allClients.forEach((client) => {
+      // Send other client that you are ready
+      if(client.roomId === request.roomId && client.userId !== userId)
+      {
+        client.ws.send(JSON.stringify({ status: 'ready'}));
+      }
+      ws.send(JSON.stringify({type: 'Y', message: 'You are second player', status: 'ready'}));
 
+    });
+      
+  }else{
+    ws.send(JSON.stringify({type: 'z', message: 'Room is full'}));
+    ws.close();
+  }
   map.set(userId, ws);
-
-  ws.on('error', console.error);
-
+  ws.on('error', (error) =>{
+    console.log('error', error);
+  });
   ws.on('message', function (message) {
-    //
-    // Here we can now use session parameters.
-    //
     console.log(`Received message ${message} from user ${userId}`);
+    allClients.forEach((client) => {
+        if(client.roomId === request.roomId ){
+          if(client.userId !== userId)
+          {
+            // If client is not sender set filed yourTurn = true
+            const data = JSON.parse(message);
+            const finalData  = {
+              ...data,
+              yourTurn: true
+            }
+            client.ws.send(JSON.stringify(finalData));
+
+          }else{
+            const data = JSON.parse(message);
+           const finalData  = {
+              ...data,
+              yourTurn: false
+            }
+            client.ws.send(JSON.stringify(finalData));
+            
+          }
+      }
+    }
+    );
   });
 
   ws.on('close', function () {
+    // pull allClients
+    const index = allClients.findIndex((client) => client.userId === userId);
+    allClients.splice(index, 1);
     map.delete(userId);
   });
 });

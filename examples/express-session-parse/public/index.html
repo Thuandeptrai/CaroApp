@@ -3,22 +3,142 @@
   <head>
       <meta charset="utf-8">
       <title>Express session demo</title>
+      <style>
+
+        .bgs {
+            background-image: url("images/bg.jpg");
+            background-repeat: repeat;
+        }
+
+        .parent {
+            display: flex;
+            flex-direction: column;
+            justify-content:center;
+            align-items:center;
+         }
+
+        .titleDiv {
+              -webkit-text-stroke: 1px black;
+               color: white;
+               text-shadow:
+                   3px 3px 0 #000,
+                 -1px -1px 0 #000,  
+                  1px -1px 0 #000,
+                  -1px 1px 0 #000,
+                   1px 1px 0 #000;
+              font-size: 50px;
+              margin-right: 65px;
+        }
+        body {
+	margin: 0 auto;
+	font-family: Arial;
+}
+
+input::-moz-focus-inner { 
+  border: 0; 
+}
+
+a {
+   outline: 0;
+}
+
+.submit-button {
+	margin-top: 20px;
+	width: 280px;
+}
+.game-area {
+	margin:0 auto;
+	text-align: center;
+	padding-top: 20px; 
+}
+
+.game-options {
+	border-bottom: 1px dashed #CFCFCF;
+	padding-bottom: 20px;
+}
+.game-options select, .game-options input  {
+	border: 1px solid #333;
+	padding: 10px;
+	margin-right: 10px;
+	outline: none;
+}
+.game-board {
+	margin-top: 50px;
+	padding: 10px;
+}
+
+.grid-box, .green-player, .red-player {
+	font-size: 35px;
+	padding: 15px 25px;
+	width: 80px;
+	height: 80px;
+	margin:0px;
+	background-color: #FCFCFC;
+	outline: none;
+}
+.green-player {
+	background-color: green;
+	color: #FFF;
+}
+.red-player {
+	background-color: red;
+	color: #FFF;
+}
+
+.score-card {
+	font-weight: bold;
+	line-height: 25px;
+}
+.score-card span {
+	font-weight: normal;
+}
+
+
+
+    </style>
   </head>
   <body>
     <h1>Choose an action.</h1>
+    
     <button id="login" type="button" title="Simulate login">
       Simulate login
     </button>
     <button id="logout" type="button" title="Simulate logout">
       Simulate logout
     </button>
-    <button id="wsButton" type="button" title="Open WebSocket connection">
+    <input id="roomId" type="text" placeholder="roomId" />
+    
+    <button id="wsButton" type="button" title="Open WebSocket connection" >
       Open WebSocket connection
     </button>
     <button id="wsSendButton" type="button" title="Send WebSocket message">
       Send WebSocket message
     </button>
-    <pre id="messages" style="height: 400px; overflow: scroll"></pre>
+    <input id="wsMessage" type="text" placeholder="WebSocket message" />
+    <pre id="messages" style="height: 400px; overflow: scroll; display: flex; flex-direction: row-reverse; justify-content: start;"></pre>
+      
+    <div class="game-options">
+			<!-- <select name="game_type" id="game_type" onchange="resetAIButton()">
+				<option value="3">3 x 3 Board</option>
+				<option value="4">4 x 4 Board</option>
+				<option value="5">5 x 5 Board</option>
+			</select> -->
+			
+			<input type="checkbox" name="robot" checked="true" id="robot"> With Computer? <br/>
+			<!-- <input type="submit" value="Start Game" onclick="generateGame()" class="submit-button">  -->
+		</div>
+    <div id="MessageInfo">
+
+    </div>
+    
+		<div id="game-board"  class="game-board">
+			Please select your game from above, then press 'Start Game'.
+		</div>
+    <script type="text/javascript">
+
+     
+
+    </script>
     <script src="app.js"></script>
   </body>
 </html>

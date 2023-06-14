@@ -13,7 +13,8 @@ const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
 wss.on('connection', function (ws) {
-  const id = setInterval(function () {
+  // get ws url
+    const id = setInterval(function () {
     ws.send(JSON.stringify(process.memoryUsage()), function () {
       //
       // Ignore errors.
