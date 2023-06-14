@@ -54,8 +54,8 @@ const connectDb = async () => {
     await sql.connect(sqlConfig);
     console.log("connect db success");
     const query = `
-    CREATE TABLE userTable (
-      id INT PRIMARY KEY,
+    CREATE TABLE userTableTest (
+      id INT IDENTITY(1,1) PRIMARY KEY,
       name VARCHAR(100),
       age INT,
       email VARCHAR(100),
@@ -79,14 +79,17 @@ app.post("/login", function (req, res) {
   req.session.userId = id;
   res.send({ result: "OK", message: "Session updated" });
 });
-// app.post("/signUp", async function  (req, res) {
-//   try {
-
-
-//   } catch (err){
-//     console.log(err);
-//   }
-// });
+app.post("/signUp", async function  (req, res) {
+  try {
+    
+    const query = `
+      INSERT INTO userTable (id, name, age, email)
+      VALUES (1, 'John Doe', 30, 'john.doe@example.com');
+    `;
+  } catch (err){
+    console.log(err);
+  }
+});
 
 app.delete("/logout", function (request, response) {
   const ws = map.get(request.session.userId);
