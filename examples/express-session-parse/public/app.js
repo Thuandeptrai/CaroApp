@@ -16,7 +16,7 @@ let createArrayCaro5x5 = [
   [0, 0, 0, 0, 0],
   [0, 0, 0, 0, 0],
 ];
-let canPlay = true;
+let canPlay = false;
 
 (function () {
   const messages = document.querySelector("#messages");
@@ -25,7 +25,9 @@ let canPlay = true;
   const logout = document.querySelector("#logout");
   const login = document.querySelector("#login");
   const getInfoDiv = document.querySelector("#MessageInfo");
-
+  const email = document.querySelector("#email");
+  const password = document.querySelector("#password");
+  const wsCloseButton = document.querySelector("#wsCloseButton");
   function showMessage(message) {
     messages.textContent += `\n${message}`;
     messages.scrollTop = messages.scrollHeight;
@@ -38,12 +40,23 @@ let canPlay = true;
   }
 
   login.onclick = function () {
-    fetch("/login", { method: "POST", credentials: "same-origin" })
-      .then(handleResponse)
-      .then(showMessage)
-      .catch(function (err) {
-        showMessage(err.message);
-      });
+    if (!email.value || !password.value) {
+      return alert("Please fill all field");
+    } else {
+      fetch("/login", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: email.value, password: password.value }),
+      })
+        .then(handleResponse)
+        .then(showMessage)
+        .catch(function (err) {
+          showMessage(err.message);
+        });
+    }
   };
 
   logout.onclick = function () {
@@ -58,12 +71,16 @@ let canPlay = true;
   let ws;
 
   wsButton.onclick = function () {
+    
+    canPlay = false;
     if (ws) {
       ws.onerror = ws.onopen = ws.onclose = null;
       ws.close();
     }
-
     const getRoomId = document.querySelector("#roomId");
+    if (getRoomId.value === "") {
+      return alert("Please fill room id");
+    }
 
     ws = new WebSocket(`ws://localhost:8080/${getRoomId.value}`);
     ws.onerror = function () {
@@ -85,14 +102,16 @@ let canPlay = true;
         return;
       }
       if (parseData.status === "ready") {
-        if(parseData.type !== "Y")
-        {
+        if (parseData.type !== "Y") {
           canPlay = true;
         }
       } else if (parseData.status === "waiting") {
-          canPlay = false;
+        canPlay = false;
         getInfoDiv.innerHTML = "Please Wait";
-
+      }
+      if(parseData.data === "You Lose"){
+        getInfoDiv.innerHTML = "You Lose";
+        canPlay = false;
       }
       const gridSelect = document.querySelectorAll(".grid-box");
       console.log("gridSelect", gridSelect);
@@ -106,15 +125,16 @@ let canPlay = true;
             // Update arrayBase on obj name (grid-1-1)
             // Update arrayCaro 5x5 with value
             console.log("createArrayCaro5x5", createArrayCaro5x5);
-            createArrayCaro5x5[row - 1][col - 1] = userDefault;
-            console.log("createArrayCaro5x51", createArrayCaro5x5);
+            if (createArrayCaro5x5[row - 1][col - 1] === 0) {
+              createArrayCaro5x5[row - 1][col - 1] = userDefault;
+              canPlay = false;
+              console.log("createArrayCaro5x51", createArrayCaro5x5);
 
-            ws.send(
-              JSON.stringify({ type: "board", data: createArrayCaro5x5 })
-            );
-           getInfoDiv.innerHTML = "Please Wait";
-
-            canPlay = false;
+              ws.send(
+                JSON.stringify({ type: "board", data: createArrayCaro5x5 })
+              );
+              getInfoDiv.innerHTML = "Please Wait";
+            }
           }
         });
       });
@@ -127,12 +147,14 @@ let canPlay = true;
           getInfoDiv.innerHTML = "Your Turn";
         }
         console.log("parseData.data", checkWin());
-        if(checkWin() === true){
+        if (checkWin() === true) {
           getInfoDiv.innerHTML = "You Win";
-          ws.send(JSON.stringify({
-            type: "result",
-            data: "You Win",
-          }))
+          ws.send(
+            JSON.stringify({
+              type: "result",
+              data: "You Win",
+            })
+          );
         }
       }
 
@@ -145,6 +167,12 @@ let canPlay = true;
       showMessage("WebSocket connection closed");
       ws = null;
     };
+      window.addEventListener('beforeunload', function (e) {
+        e.preventDefault();
+        e.returnValue = '';
+        ws.close();
+    });
+ 
   };
 
   wsSendButton.onclick = function () {

@@ -7,8 +7,9 @@ const session = require("express-session");
 const express = require("express");
 const http = require("http");
 const uuid = require("uuid");
-const bcryptjs = require('bcryptjs')
+const bcryptjs = require("bcryptjs");
 const sql = require("mssql");
+const bodyParser = require("body-parser");
 
 const { WebSocketServer } = require("../..");
 
@@ -46,54 +47,88 @@ const sqlConfig = {
 //
 // Serve static files from the 'public' folder.
 //
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 app.use(express.static("public"));
 app.use(sessionParser);
 const connectDb = async () => {
   try {
     // make sure that any items are correctly URL encoded in the connection string
     await sql.connect(sqlConfig);
-    console.log("connect db success");
-    const query = `
-    CREATE TABLE userTableTest (
-      id INT IDENTITY(1,1) PRIMARY KEY,
-      name VARCHAR(100),
-      age INT,
-      email VARCHAR(100),
-      password VARCHAR(100)
-    );
-  `;
-  (await sql.connect(sqlConfig)).query(query);
+    //   console.log("connect db success");
+    //   const query = `
+    //   CREATE TABLE userTableProduction (
+    //     id INT IDENTITY(1,1) PRIMARY KEY,
+    //     name VARCHAR(100),
+    //     age INT,
+    //     email VARCHAR(100),
+    //     password VARCHAR(100)
+    //   );
+    // `;
+    // (await sql.connect(sqlConfig)).query(query);
   } catch (err) {
     console.log(err);
     // ... error checks
   }
 };
 connectDb();
-app.post("/login", function (req, res) {
-  //
-  // "Log in" user and set userId to session.
-  //
-  const id = uuid.v4();
-
-  console.log(`Updating session for user ${id}`);
-  req.session.userId = id;
-  res.send({ result: "OK", message: "Session updated" });
-});
-app.post("/signUp", async function  (req, res) {
+app.post("/signUp", async function (req, res) {
   try {
-    
-    const query = `
-      INSERT INTO userTable (id, name, age, email)
-      VALUES (1, 'John Doe', 30, 'john.doe@example.com');
-    `;
-  } catch (err){
+    console.log("req.body", req.body);
+    const { name, age, email, password } = req.body;
+
+    const findUserByEmail = `EXEC findUserByEmail @Email = '${email}'`;
+    const resultFindUserByEmail = await (
+      await sql.connect(sqlConfig)
+    ).query(findUserByEmail);
+    if (resultFindUserByEmail.recordset.length > 0)
+      return res.send({ result: "OK", message: "Email already exist" });
+    const salt = await bcryptjs.genSalt(10);
+    const hashedPassword = await bcryptjs.hash(password, salt);
+    // excute procedure
+    const query = `EXEC createUser1 @name = '${name}', @age = ${age}, @email = '${email}' , @Password = '${hashedPassword}' `;
+    const result = await (await sql.connect(sqlConfig)).query(query);
+    res.send({ result: "OK", message: "Sign up success" });
+  } catch (err) {
     console.log(err);
+    throw new Error(err);
+  }
+});
+app.post("/login", async function (req, res) {
+  try {
+    //
+    // "Log in" user and set userId to session.
+    //
+    const id = uuid.v4();
+    // Create Procedure LoginWithEmailAndPassword
+    // @Email nvarchar(100)
+    // AS
+    // BEGIN
+    //   SELECT * FROM userTableProduction WHERE email = @Email
+    // END
+    const { email, password } = req.body;
+    const query = `EXEC LoginWithEmailAndPassword @Email = '${email}'`;
+    const result = await (await sql.connect(sqlConfig)).query(query);
+    if (result.recordset.length === 0)
+      return res.send({ result: "OK", message: "Email or password wrong" });
+    const user = result.recordset[0];
+    const isMatch = await bcryptjs.compare(password, user.password);
+    if (!isMatch)
+      return res.send({ result: "OK", message: "Email or password wrong" });
+    // const user = { id, email };
+    console.log(`Updating session for user ${id}`);
+    req.session.userId = id;
+    res.send({ result: "OK", message: "Session updated" });
+  } catch (err) {
+    console.log(err);
+    throw new Error(err);
   }
 });
 
 app.delete("/logout", function (request, response) {
   const ws = map.get(request.session.userId);
 
+    allClients = allClients.filter((client) => client.userId !== request.session.userId);
   console.log("Destroying session");
   request.session.destroy(function () {
     if (ws) ws.close();
@@ -110,33 +145,13 @@ const server = http.createServer(app);
 //
 // Create a WebSocket server completely detached from the HTTP server.
 //
-const wss = new WebSocketServer({ clientTracking: false, noServer: true });
+const wss = new WebSocketServer({ clientTracking: false });
 
-server.on("upgrade", function (request, socket, head) {
-  socket.on("error", onSocketError);
-
-  console.log("Parsing session from request...");
-
-  sessionParser(request, {}, () => {
-    if (!request.session.userId) {
-      socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
-      socket.destroy();
-      return;
-    }
-    // getRoomId via url
-
-    socket.removeListener("error", onSocketError);
-
-    wss.handleUpgrade(request, socket, head, function (ws) {
-      wss.emit("connection", ws, request);
-    });
-  });
-});
 var id = 0;
-const allClients = [];
+let allClients = [];
 wss.on("connection", function (ws, request) {
   const userId = request.session.userId;
-  console.log("userId", userId);
+  console.log("userId", request.roomId);
   allClients.push({ userId, ws, roomId: request.roomId });
   // Check total clients in room if > 2 => return client.ws.send('room is full')
   let totalClients = 0;
@@ -182,10 +197,20 @@ wss.on("connection", function (ws, request) {
         if (client.userId !== userId) {
           // If client is not sender set filed yourTurn = true
           const data = JSON.parse(message);
-          const finalData = {
+         
+          let finalData = {
             ...data,
+            
             yourTurn: true,
           };
+          if(finalData.type === 'result'){
+            finalData = {
+              ...finalData,
+              type: "result",
+              data:'You Lose',
+              yourTurn: false,
+            }
+          }
           client.ws.send(JSON.stringify(finalData));
         } else {
           const data = JSON.parse(message);
@@ -201,6 +226,7 @@ wss.on("connection", function (ws, request) {
 
   ws.on("close", function () {
     // pull allClients
+    console.log(`User ${userId} left`);
     const index = allClients.findIndex((client) => client.userId === userId);
     allClients.splice(index, 1);
     map.delete(userId);

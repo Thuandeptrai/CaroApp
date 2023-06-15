@@ -98,53 +98,18 @@ a {
     </style>
   </head>
   <body>
-    <h1>Choose an action.</h1>
-    
-    <button id="login" type="button" title="Simulate login">
-      Simulate login
-    </button>
-    <input id="email" type="text" placeholder="email" />
-    <input id="password" type="text" placeholder="password" />
-    <button id="logout" type="button" title="Simulate logout">
-      Simulate logout
-    </button>
-    <input id="roomId" type="text" placeholder="roomId" />
-    
-    <button id="wsButton" type="button" title="Open WebSocket connection" >
-      Open WebSocket connection
-    </button>
-    <button id="wsSendButton" type="button" title="Send WebSocket message">
-      Send WebSocket message
-    </button>
-    <button id="wsCloseButton" type="button">
-      Close button
-    </button>
-    <input id="wsMessage" type="text" placeholder="WebSocket message" />
-    <pre id="messages" style="height: 400px; overflow: scroll; display: flex; flex-direction: row-reverse; justify-content: start;"></pre>
-      
-    <div class="game-options">
-			<!-- <select name="game_type" id="game_type" onchange="resetAIButton()">
-				<option value="3">3 x 3 Board</option>
-				<option value="4">4 x 4 Board</option>
-				<option value="5">5 x 5 Board</option>
-			</select> -->
-			
-			<input type="checkbox" name="robot" checked="true" id="robot" style="display: none;"> <br/>
-			<!-- <input type="submit" value="Start Game" onclick="generateGame()" class="submit-button">  -->
-		</div>
-    <div id="MessageInfo">
-
-    </div>
-    
-		<div id="game-board"  class="game-board">
-			Please select your game from above, then press 'Start Game'.
-		</div>
-    <script type="text/javascript">
-
+    <h1>Sign Up Page.</h1>
+    <!-- It contain userTableProduction(name, age, email, password) -->
+    <input type="text" id="username" placeholder="Username" />
+    <input type="text" id="age" placeholder="Age" />
+    <input type="text" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button id="signup" onclick="signUp()">Sign Up</button>
+    <script type="text/javascript"></script>
+    <script src="/signup/signup.js" >
+        </script>
      
 
     </script>
-    <script src="app.js"></script>
   </body>
 </html>
- 
