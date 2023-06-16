@@ -1,6 +1,10 @@
-/* eslint-disable quotes */
-/* eslint-disable no-var */
 /* eslint-disable prettier/prettier */
+/* eslint-disable no-var */
+/* eslint-disable no-unused-vars */
+/* eslint-disable quotes */
+/* eslint-disable no-undef */
+/* eslint-disable prettier/prettier */
+// eslint-disable-next-line prettier/prettier
 const uuid = require("uuid");
 const {
   sendNotifyForLogin,
@@ -8,6 +12,7 @@ const {
 } = require("../handler/sendNotifyForResponse");
 const checkValidTable = require("../handler/checkValidTable");
 const checkWin = require("../helper/checkwin");
+const { wsWithStatusAndData } = require("../utils/sendResponse");
 // store _allRoom In map
 class RoomController {
   constructor() {
@@ -35,7 +40,9 @@ class RoomController {
       });
       this._wsContain.set(ws, this._allRoom.size - 1);
       ws.send(sendNotifyForLogin(this._allRoom.get(0), userObj));
-    } else if (this._allRoom.get(this._allRoom.size - 1).roomMember.length == 2) {
+    } else if (
+      this._allRoom.get(this._allRoom.size - 1).roomMember.length == 2
+    ) {
       this._allRoom.set(this._allRoom.size, {
         roomName: uuid.v4(),
         roomOwner: userObj.userId,
@@ -85,11 +92,8 @@ class RoomController {
     console.log(room);
     if (!room || room.status === "waiting" || room.turn !== userId) {
       ws.send(
-        JSON.stringify({
-          type: "status",
-          data: {
-            status: "waiting",
-          },
+        wsWithStatusAndData("notify", {
+          message: "You can't play now",
         })
       );
       return;
@@ -111,12 +115,8 @@ class RoomController {
       finalObj.winner = userId;
       room.roomSocket.forEach((socket) => {
         socket.send(
-          JSON.stringify({
-            type: "status",
-            data: {
-              status: "end",
-              winner: userId,
-            },
+          wsWithStatusAndData("end", {
+            winner: userId,
           })
         );
       });

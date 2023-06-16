@@ -1,4 +1,5 @@
-class userModel {
+
+class UserModel {
   constructor(id, name, email, password) {
     this.id = id;
     this.name = name;
@@ -6,4 +7,4 @@ class userModel {
     this.password = password;
   }
 }
-module.exports = userModel;
+module.exports = UserModel;

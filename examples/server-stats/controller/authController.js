@@ -1,12 +1,16 @@
-/* eslint-disable quotes */
-/* eslint-disable no-var */
 /* eslint-disable prettier/prettier */
-const userModel = require("../models/userModel");
+/* eslint-disable no-var */
+/* eslint-disable no-unused-vars */
+/* eslint-disable quotes */
+/* eslint-disable no-undef */
+/* eslint-disable prettier/prettier */
+// eslint-disable-next-line prettier/prettier
+const userModel = require("../models/UserModel");
 class AuthController {
   constructor(ws, sqlConfig, sql, bcryptjs) {
     this._ws = ws;
     this._sqlConfig = sqlConfig;
-    this.sql = sql;
+    this._sql = sql;
     this._bcryptjs = bcryptjs;
   }
   async login(data) {
