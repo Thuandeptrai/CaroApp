@@ -10,14 +10,16 @@ const {
   sendNotifyForLogin,
   notifyWithData,
 } = require("../handler/SendNotifyForResponse");
-const checkValidTable = require("../handler/SheckValidTable");
+const checkValidTable = require("../handler/CheckValidTable");
 const checkWin = require("../helper/CheckWin");
 const { wsWithStatusAndData } = require("../utils/SendResponse");
+const { DEFAULT_TABLE } = require("../config/CONFIG");
 // store _allRoom In map
 class RoomController {
   constructor() {
     this._allRoom = new Map();
     this._wsContain = new Map();
+    this._positionUserHasLeft = [];
   }
   async createRoom(userObj, ws) {
     if (this._allRoom.size === 0) {
@@ -28,13 +30,7 @@ class RoomController {
         roomSocket: [ws],
         userX: userObj.userId,
         turn: userObj.userId,
-        defaultTable: [
-          [0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0],
-        ],
+        defaultTable:DEFAULT_TABLE,
         voteRestart: [],
         status: "waiting",
       });
@@ -50,19 +46,18 @@ class RoomController {
         roomSocket: [ws],
         userX: userObj.userId,
         turn: userObj.userId,
-        defaultTable: [
-          [0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0],
-        ],
+        defaultTable: DEFAULT_TABLE,
         voteRestart: [],
         status: "waiting",
       });
       this._wsContain.set(ws, this._allRoom.size);
     } else {
-      const getRoomObj = this._allRoom.get(this._allRoom.size - 1);
+      let position = this._allRoom.size - 1;
+      if (this._positionUserHasLeft.length > 0) {
+        position = this._positionUserHasLeft[0];
+        this._positionUserHasLeft.shift();
+      }
+      const getRoomObj = this._allRoom.get(position);
       const finalObj = {
         ...getRoomObj,
         roomMember: [...getRoomObj.roomMember, userObj.userId],
@@ -82,7 +77,13 @@ class RoomController {
   async playChess(ws, position, userId) {
     const roomKey = this._wsContain.get(ws);
     const room = this._allRoom.get(roomKey);
-    if (!room || room.status === "waiting" || room.turn !== userId || room.status === "end") {
+
+    if (
+      !room ||
+      room.status === "waiting" ||
+      room.turn !== userId ||
+      room.status === "end"
+    ) {
       ws.send(
         wsWithStatusAndData("notify", {
           message: "You can't play now",
@@ -147,13 +148,7 @@ class RoomController {
         voteRestart,
       };
       if (voteRestart.length === room.roomMember.length) {
-        finalObj.defaultTable = [
-          [0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0],
-        ];
+        finalObj.defaultTable = DEFAULT_TABLE
         finalObj.turn = finalObj.userX;
         finalObj.voteRestart = [];
         room.roomSocket.forEach((socket) => {
@@ -214,6 +209,7 @@ class RoomController {
       if (roomMember.length === 2) {
         finalObj.status = "waiting";
       }
+      this._positionUserHasLeft.push(roomKey);
       this._allRoom.set(roomKey, finalObj);
       this._wsContain.set(ws, roomKey);
     }

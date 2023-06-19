@@ -20,7 +20,7 @@ const RoomController = require("./controller/RoomController");
 const {
   loginFail, notifyWithData,
 } = require("./handler/SendNotifyForResponse");
-const SQLCONFIG = require("./config/SQLCONFIG");
+const {SQLCONFIG} = require("./config/CONFIG");
 const UserController = require("./controller/UserController");
 const app = express();
 app.use(express.static(path.join(__dirname, "/public")));
