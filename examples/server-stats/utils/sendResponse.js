@@ -7,7 +7,7 @@
 // eslint-disable-next-line prettier/prettier
 function wsWithStatusAndData(status, data) {
   return JSON.stringify({
-    type: "status",
+    type: status,
     data: data,
   });
 }

@@ -5,7 +5,7 @@
 /* eslint-disable no-undef */
 /* eslint-disable prettier/prettier */
 // eslint-disable-next-line prettier/prettier
-const sqlConfig = {
+const SQLCONFIG = {
   user: "ThuanTest1",
   password: "123456",
   database: "CaroApp",
@@ -19,4 +19,4 @@ const sqlConfig = {
     trustServerCertificate: true,
   },
 };
-module.exports = sqlConfig;
+module.exports = SQLCONFIG;

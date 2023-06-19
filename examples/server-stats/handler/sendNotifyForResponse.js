@@ -13,12 +13,7 @@ function sendNotifyForLogin(allRoom, userObj) {
     currentUser: userObj.userId,
   });
 }
-function loginFail(data) {
-  return JSON.stringify({
-    type: "notify",
-    data: data,
-  });
-}
+
 function notifyWithData(data) {
   return JSON.stringify({
     type: "notify",
@@ -39,7 +34,6 @@ function checkValidTable(ws, defaultTable, position) {
 }
 module.exports = {
   sendNotifyForLogin,
-  loginFail,
   notifyWithData,
   checkValidTable,
 };

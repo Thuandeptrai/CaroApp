@@ -15,8 +15,8 @@ class AuthController {
   }
   async login(data) {
     try {
-      const userModelForLogin = new userModel("", "", data.email, data.password);
-      const query = `EXEC LoginWithEmailAndPassword @Email = '${userModelForLogin.email}'`;
+      const userModelForLogin = new userModel("", data.email, "", data.password);
+      const query = `EXEC LoginWithEmailAndPassword @Email = '${userModelForLogin._email}'`;
       const result = await (
         await this._sql.connect(this._sqlConfig)
       ).query(query);
@@ -26,7 +26,7 @@ class AuthController {
         );
       const user = result.recordset[0];
       const isMatch = await this._bcryptjs.compare(
-        userModelForLogin.password,
+        userModelForLogin._password,
         user.password
       );
       if (!isMatch)
@@ -43,11 +43,12 @@ class AuthController {
     try {
       const userModelForSignUp = new userModel(
         data.name,
-        data.age,
         data.email,
+        data.age,
         data.password
       );
-      const findUserByEmail = `EXEC findUserByEmail @Email = '${userModelForSignUp.email}'`;
+      
+      const findUserByEmail = `EXEC findUserByEmail @Email = '${userModelForSignUp._email}'`;
       const resultFindUserByEmail = await (
         await this._sql.connect(this._sqlConfig)
       ).query(findUserByEmail);
@@ -57,11 +58,11 @@ class AuthController {
         );
       const salt = await this._bcryptjs.genSalt(10);
       const hashedPassword = await this._bcryptjs.hash(
-        userModelForSignUp.password,
+        userModelForSignUp._password,
         salt
       );
       // excute procedure
-      const query = `EXEC createUser1 @name = '${userModelForSignUp.name}', @age = ${userModelForSignUp.age}, @email = '${userModelForSignUp.email}' , @Password = '${hashedPassword}' `;
+      const query = `EXEC createUser1 @name = '${userModelForSignUp._name}', @age = ${userModelForSignUp._age}, @email = '${userModelForSignUp._email}' , @Password = '${hashedPassword}' `;
       const result = await (
         await this._sql.connect(this._sqlConfig)
       ).query(query);

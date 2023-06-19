@@ -9,10 +9,10 @@ const uuid = require("uuid");
 const {
   sendNotifyForLogin,
   notifyWithData,
-} = require("../handler/sendNotifyForResponse");
-const checkValidTable = require("../handler/checkValidTable");
-const checkWin = require("../helper/checkwin");
-const { wsWithStatusAndData } = require("../utils/sendResponse");
+} = require("../handler/SendNotifyForResponse");
+const checkValidTable = require("../handler/SheckValidTable");
+const checkWin = require("../helper/CheckWin");
+const { wsWithStatusAndData } = require("../utils/SendResponse");
 // store _allRoom In map
 class RoomController {
   constructor() {
@@ -75,22 +75,14 @@ class RoomController {
       );
       this._wsContain.set(ws, this._allRoom.size - 1);
       this._allRoom.get(this._allRoom.size - 1).roomSocket.forEach((socket) => {
-        socket.send(
-          JSON.stringify({
-            type: "status",
-            data: {
-              status: "playing",
-            },
-          })
-        );
+        socket.send(wsWithStatusAndData("status", "playing"));
       });
     }
   }
   async playChess(ws, position, userId) {
     const roomKey = this._wsContain.get(ws);
     const room = this._allRoom.get(roomKey);
-    console.log(room);
-    if (!room || room.status === "waiting" || room.turn !== userId) {
+    if (!room || room.status === "waiting" || room.turn !== userId || room.status === "end") {
       ws.send(
         wsWithStatusAndData("notify", {
           message: "You can't play now",
@@ -123,12 +115,9 @@ class RoomController {
     } else {
       room.roomSocket.forEach((socket) => {
         socket.send(
-          JSON.stringify({
-            type: "play",
-            data: {
-              defaultTable,
-              turn: finalObj.turn,
-            },
+          wsWithStatusAndData("play", {
+            defaultTable,
+            turn: finalObj.turn,
           })
         );
       });
@@ -141,11 +130,8 @@ class RoomController {
     const room = this._allRoom.get(roomKey);
     if (!room || room.status === "waiting") {
       ws.send(
-        JSON.stringify({
-          type: "status",
-          data: {
-            status: "waiting",
-          },
+        wsWithStatusAndData("notify", {
+          message: "You can't restart now",
         })
       );
       return;
@@ -172,13 +158,10 @@ class RoomController {
         finalObj.voteRestart = [];
         room.roomSocket.forEach((socket) => {
           socket.send(
-            JSON.stringify({
-              type: "restart",
-              data: {
-                voteRestart,
-                defaultTable: finalObj.defaultTable,
-                turn: finalObj.turn,
-              },
+            wsWithStatusAndData("restart", {
+              voteRestart,
+              defaultTable: finalObj.defaultTable,
+              turn: finalObj.turn,
             })
           );
         });
@@ -187,11 +170,8 @@ class RoomController {
       if (voteRestart.length !== 2) {
         room.roomSocket.forEach((socket) => {
           socket.send(
-            JSON.stringify({
-              type: "restart",
-              data: {
-                voteRestart,
-              },
+            wsWithStatusAndData("restart", {
+              voteRestart,
             })
           );
         });
@@ -204,12 +184,9 @@ class RoomController {
     const { roomSocket } = room;
     roomSocket.forEach((socket) => {
       socket.send(
-        JSON.stringify({
-          type: "chat",
-          data: {
-            message,
-            userId,
-          },
+        wsWithStatusAndData("chat", {
+          message,
+          userId,
         })
       );
     });
@@ -242,11 +219,8 @@ class RoomController {
     }
     roomSocket.forEach((socket) => {
       socket.send(
-        JSON.stringify({
-          type: "leave",
-          data: {
-            userId,
-          },
+        wsWithStatusAndData("leave", {
+          userId,
         })
       );
     });

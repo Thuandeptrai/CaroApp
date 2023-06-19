@@ -1,7 +1,7 @@
 /* eslint-disable quotes */
 /* eslint-disable no-var */
 /* eslint-disable prettier/prettier */
-const { notifyWithData } = require("./sendNotifyForResponse");
+const { notifyWithData } = require("./SendNotifyForResponse");
 
 function checkValidTable(ws, defaultTable, position) {
   if (position.x > 4 || position.y > 4) {

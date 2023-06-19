@@ -10,7 +10,7 @@ class UserController {
     this._wsMap = new Map();
     this._userIdMap = new Map();
   }
-  addNewUser(ws, userId, userObj) {
+  addNewUser(ws, userObj) {
     this._wsMap.set(ws, userObj);
     this._userIdMap.set(userObj.email, {
       ...userObj,

@@ -12,16 +12,16 @@ const bodyParser = require("body-parser");
 const sql = require("mssql");
 const uuid = require("uuid");
 const bcryptjs = require("bcryptjs");
-const authController = require("./controller/AuthController");
+const AuthController = require("./controller/AuthController");
 
 const { createServer } = require("http");
 const { WebSocketServer } = require("../..");
-const roomController = require("./controller/RoomController");
+const RoomController = require("./controller/RoomController");
 const {
-  loginFail,
-} = require("./handler/sendNotifyForResponse");
-const sqlConfig = require("./config/sqlconfig");
-const userController = require("./controller/UserController");
+  loginFail, notifyWithData,
+} = require("./handler/SendNotifyForResponse");
+const SQLCONFIG = require("./config/SQLCONFIG");
+const UserController = require("./controller/UserController");
 const app = express();
 app.use(express.static(path.join(__dirname, "/public")));
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -31,15 +31,15 @@ const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
 wss.on("connection", function (ws) {
-  const newAuthClass = new authController(ws, sqlConfig, sql, bcryptjs);
+  const newAuthClass = new AuthController(ws, SQLCONFIG, sql, bcryptjs);
   ws.on("message", async function (message) {
     const parseMessage = JSON.parse(message);
     switch (parseMessage.type) {
       case "login": {
         try {
           const { email } = parseMessage.data;
-          if (!userController.checkValidLoginByEmail(email)) {
-            loginFail("You are already login ");
+          if (!UserController.checkValidLoginByEmail(email)) {
+            notifyWithData("You are already login ");
             return;
           }
           const data = await newAuthClass.login(parseMessage.data);
@@ -49,8 +49,8 @@ wss.on("connection", function (ws) {
             ws,
             email: data.email,
           };
-          userController.addNewUser(ws, userObj.userId, userObj);
-          roomController.createRoom(userObj, ws);
+          UserController.addNewUser(ws, userObj.userId, userObj);
+          RoomController.createRoom(userObj, ws);
         } catch (err) {
           console.log(err);
         }
@@ -67,8 +67,8 @@ wss.on("connection", function (ws) {
       case "play": {
         try {
           const { position } = parseMessage.data;
-          const { userId } = userController.getUserByWs(ws);
-          await roomController.playChess(ws, position, userId);
+          const { userId } = UserController.getUserByWs(ws);
+          await RoomController.playChess(ws, position, userId);
         } catch (err) {
           console.log(err);
         }
@@ -76,8 +76,8 @@ wss.on("connection", function (ws) {
       }
       case "voteRestart": {
         try {
-          const { userId } = userController.getUserByWs(ws);
-          await roomController.voteRestart(ws, userId);
+          const { userId } = UserController.getUserByWs(ws);
+          await RoomController.voteRestart(ws, userId);
         } catch (err) {
           console.log(err);
         }
@@ -86,8 +86,8 @@ wss.on("connection", function (ws) {
       case "chat": {
         try {
           const { message } = parseMessage.data;
-          const { userId } = userController.getUserByWs(ws);
-          await roomController.chatRoom(ws, message, userId);
+          const { userId } = UserController.getUserByWs(ws);
+          await RoomController.chatRoom(ws, message, userId);
         } catch (err) {
           console.log(err);
         }
@@ -98,10 +98,10 @@ wss.on("connection", function (ws) {
 
   ws.on("close", function () {
     // Remove
-    const userObj = userController.getUserByWs(ws);
+    const userObj = UserController.getUserByWs(ws);
     if (userObj) {
-      roomController.leaveRoom(ws, userObj);
-      userController.removeUser(ws);
+      RoomController.leaveRoom(ws, userObj);
+      UserController.removeUser(ws);
     }
   });
 });
