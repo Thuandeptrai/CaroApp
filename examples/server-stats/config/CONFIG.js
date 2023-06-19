@@ -19,14 +19,15 @@ const SQLCONFIG = {
     trustServerCertificate: true,
   },
 };
-const DEFAULT_TABLE =  [
+const DEFAULT_TABLE = [
   [0, 0, 0, 0, 0],
   [0, 0, 0, 0, 0],
   [0, 0, 0, 0, 0],
   [0, 0, 0, 0, 0],
   [0, 0, 0, 0, 0],
-]
+];
+
 module.exports = {
   SQLCONFIG,
-  DEFAULT_TABLE
+  DEFAULT_TABLE,
 };

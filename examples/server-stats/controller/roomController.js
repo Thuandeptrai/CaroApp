@@ -14,48 +14,32 @@ const checkValidTable = require("../handler/CheckValidTable");
 const checkWin = require("../helper/CheckWin");
 const { wsWithStatusAndData } = require("../utils/SendResponse");
 const { DEFAULT_TABLE } = require("../config/CONFIG");
+const defaultRoom = require("../utils/RoomDefault");
+const RoomModel = require("../models/RoomModel");
 // store _allRoom In map
 class RoomController {
   constructor() {
     this._allRoom = new Map();
     this._wsContain = new Map();
-    this._positionUserHasLeft = [];
+    this._roomFree = [];
   }
   async createRoom(userObj, ws) {
+    const keysArray = [...this._allRoom.keys()];
+    const lastKey = keysArray[keysArray.length - 1];
     if (this._allRoom.size === 0) {
-      this._allRoom.set(this._allRoom.size, {
-        roomName: uuid.v4(),
-        roomOwner: userObj.userId,
-        roomMember: [userObj.userId],
-        roomSocket: [ws],
-        userX: userObj.userId,
-        turn: userObj.userId,
-        defaultTable:DEFAULT_TABLE,
-        voteRestart: [],
-        status: "waiting",
-      });
-      this._wsContain.set(ws, this._allRoom.size - 1);
-      ws.send(sendNotifyForLogin(this._allRoom.get(0), userObj));
-    } else if (
-      this._allRoom.get(this._allRoom.size - 1).roomMember.length == 2
-    ) {
-      this._allRoom.set(this._allRoom.size, {
-        roomName: uuid.v4(),
-        roomOwner: userObj.userId,
-        roomMember: [userObj.userId],
-        roomSocket: [ws],
-        userX: userObj.userId,
-        turn: userObj.userId,
-        defaultTable: DEFAULT_TABLE,
-        voteRestart: [],
-        status: "waiting",
-      });
-      this._wsContain.set(ws, this._allRoom.size);
+      const mapKey = uuid.v4();
+      this._allRoom.set(mapKey, RoomModel);
+      this._wsContain.set(ws, mapKey);
+      ws.send(sendNotifyForLogin(this._allRoom.get(mapKey), userObj));
+    } else if (this._allRoom.get(lastKey)?.roomMember?.length == 2) {
+      const mapKey = uuid.v4();
+      this._allRoom.set(mapKey, defaultRoom(userObj, ws));
+      this._wsContain.set(ws, mapKey);
     } else {
-      let position = this._allRoom.size - 1;
-      if (this._positionUserHasLeft.length > 0) {
-        position = this._positionUserHasLeft[0];
-        this._positionUserHasLeft.shift();
+      let position = lastKey;
+      if (this._roomFree.length > 0) {
+        position = this._roomFree[0];
+        this._roomFree.shift();
       }
       const getRoomObj = this._allRoom.get(position);
       const finalObj = {
@@ -64,14 +48,26 @@ class RoomController {
         roomSocket: [...getRoomObj.roomSocket, ws],
         status: "playing",
       };
-      this._allRoom.set(this._allRoom.size - 1, finalObj);
-      ws.send(
-        sendNotifyForLogin(this._allRoom.get(this._allRoom.size - 1), userObj)
-      );
-      this._wsContain.set(ws, this._allRoom.size - 1);
-      this._allRoom.get(this._allRoom.size - 1).roomSocket.forEach((socket) => {
+      this._allRoom.set(position, finalObj);
+      ws.send(sendNotifyForLogin(this._allRoom.get(lastKey), userObj));
+      this._wsContain.set(ws, position);
+      this._allRoom.get(lastKey).roomSocket.forEach((socket) => {
         socket.send(wsWithStatusAndData("status", "playing"));
       });
+    }
+  }
+  async leaveRoom(ws) {
+    const roomKey = this._wsContain.get(ws);
+    const room = this._allRoom.get(roomKey);
+    const position = room.roomSocket.indexOf(ws);
+    room.roomSocket.splice(position, 1);
+    room.roomMember.splice(position, 1);
+    if (room.roomMember.length === 0) {
+      this._allRoom.delete(roomKey);
+      this._roomFree.slice(this._roomFree.indexOf(roomKey), 1);
+    } else {
+      this._allRoom.set(roomKey, room);
+      this._roomFree.push(roomKey);
     }
   }
   async playChess(ws, position, userId) {
@@ -126,20 +122,24 @@ class RoomController {
 
     this._allRoom.set(roomKey, finalObj);
   }
-  async restartGame(ws, userId) {
+  async voteRestart(ws, userId) {
     const roomKey = this._wsContain.get(ws);
     const room = this._allRoom.get(roomKey);
-    if (!room || room.status === "waiting") {
+    if (!room || room.status === "waiting" || room.status === "end") {
       ws.send(
         wsWithStatusAndData("notify", {
-          message: "You can't restart now",
+          message: "You can't vote now",
         })
       );
       return;
     }
     const { voteRestart } = room;
     if (voteRestart.includes(userId)) {
-      ws.send(notifyWithData("You have already voted"));
+      ws.send(
+        wsWithStatusAndData("notify", {
+          message: "You voted",
+        })
+      );
       return;
     } else {
       voteRestart.push(userId);
@@ -147,26 +147,25 @@ class RoomController {
         ...room,
         voteRestart,
       };
-      if (voteRestart.length === room.roomMember.length) {
-        finalObj.defaultTable = DEFAULT_TABLE
+      if (voteRestart.length === 2) {
+        finalObj.defaultTable = defaultRoom().defaultTable;
+        finalObj.status = "playing";
         finalObj.turn = finalObj.userX;
+        finalObj.winner = null;
         finalObj.voteRestart = [];
-        room.roomSocket.forEach((socket) => {
+        finalObj.roomSocket.forEach((socket) => {
           socket.send(
             wsWithStatusAndData("restart", {
-              voteRestart,
               defaultTable: finalObj.defaultTable,
               turn: finalObj.turn,
             })
           );
         });
-      }
-      this._allRoom.set(roomKey, finalObj);
-      if (voteRestart.length !== 2) {
-        room.roomSocket.forEach((socket) => {
+      } else {
+        finalObj.roomSocket.forEach((socket) => {
           socket.send(
-            wsWithStatusAndData("restart", {
-              voteRestart,
+            wsWithStatusAndData("vote", {
+              message: "You voted",
             })
           );
         });
@@ -176,8 +175,19 @@ class RoomController {
   async chatRoom(ws, message, userId) {
     const roomKey = this._wsContain.get(ws);
     const room = this._allRoom.get(roomKey);
-    const { roomSocket } = room;
-    roomSocket.forEach((socket) => {
+    if (!room || room.status === "waiting" || room.status === "end") {
+      ws.send(
+        wsWithStatusAndData("notify", {
+          message: "You can't chat now",
+        })
+      );
+      return;
+    }
+    const finalObj = {
+      ...room,
+      chat: [...room.chat, { message, userId }],
+    };
+    finalObj.roomSocket.forEach((socket) => {
       socket.send(
         wsWithStatusAndData("chat", {
           message,
@@ -185,41 +195,17 @@ class RoomController {
         })
       );
     });
+    this._allRoom.set(roomKey, finalObj);
   }
-  async leaveRoom(ws, userId) {
-    const roomKey = this._wsContain.get(ws);
-    const room = this._allRoom.get(roomKey);
-    if (!room) {
-      ws.send(notifyWithData("You are not in any room"));
-      return;
+  async getUserByRoom(ws) {
+    if (this._wsContain.has(ws)) {
+      const roomKey = this._wsContain.get(ws);
+      const room = this._allRoom.get(roomKey);
+      ws.send({
+        status: "room",
+        data: room,
+      });
     }
-    const { roomSocket, roomMember, roomOwner } = room;
-    const finalObj = {
-      ...room,
-      roomMember: roomMember.filter((item) => item !== userId),
-      roomSocket: roomSocket.filter((item) => item !== ws),
-    };
-    if (roomMember.length === 1) {
-      this._allRoom.delete(roomKey);
-      this._wsContain.delete(ws);
-    } else {
-      if (userId === roomOwner) {
-        finalObj.roomOwner = roomMember[0];
-      }
-      if (roomMember.length === 2) {
-        finalObj.status = "waiting";
-      }
-      this._positionUserHasLeft.push(roomKey);
-      this._allRoom.set(roomKey, finalObj);
-      this._wsContain.set(ws, roomKey);
-    }
-    roomSocket.forEach((socket) => {
-      socket.send(
-        wsWithStatusAndData("leave", {
-          userId,
-        })
-      );
-    });
   }
 }
 module.exports = new RoomController();

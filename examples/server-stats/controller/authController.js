@@ -15,7 +15,7 @@ class AuthController {
   }
   async login(data) {
     try {
-      const userModelForLogin = new userModel("", data.email, "", data.password);
+      const userModelForLogin = new userModel("", data.email, "", data.password, "");
       const query = `EXEC LoginWithEmailAndPassword @Email = '${userModelForLogin._email}'`;
       const result = await (
         await this._sql.connect(this._sqlConfig)
@@ -45,7 +45,8 @@ class AuthController {
         data.name,
         data.email,
         data.age,
-        data.password
+        data.password,
+        ""
       );
       
       const findUserByEmail = `EXEC findUserByEmail @Email = '${userModelForSignUp._email}'`;

@@ -7,7 +7,7 @@
 // eslint-disable-next-line prettier/prettier
 class UserController {
   constructor() {
-    this._wsMap = new Map();
+    this._wsMap = new Map() ;
     this._userIdMap = new Map();
   }
   addNewUser(ws, userObj) {

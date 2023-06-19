@@ -11,6 +11,7 @@ const path = require("path");
 const bodyParser = require("body-parser");
 const sql = require("mssql");
 const uuid = require("uuid");
+const UserModel = require("./models/UserModel");
 const bcryptjs = require("bcryptjs");
 const AuthController = require("./controller/AuthController");
 
@@ -43,14 +44,9 @@ wss.on("connection", function (ws) {
             return;
           }
           const data = await newAuthClass.login(parseMessage.data);
-          const userObj = {
-            userId: uuid.v4(),
-            v4Id: uuid.v4(),
-            ws,
-            email: data.email,
-          };
-          UserController.addNewUser(ws, userObj.userId, userObj);
-          RoomController.createRoom(userObj, ws);
+          const userModel = new UserModel(data.name, data.email, data.age, data.password, ws);
+          UserController.addNewUser(ws, userModel);
+          RoomController.createRoom(userModel, ws);
         } catch (err) {
           console.log(err);
         }
